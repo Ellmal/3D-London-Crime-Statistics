@@ -657,7 +657,7 @@ Because crime_id can be missing, create:
 
 Suggested row_id logic:
 
-hash of source_file + source_row_number + month + location + crime_type
+LCS / data_source_name / source_row_number / month 
 
 10. Preserve source metadata.
 
