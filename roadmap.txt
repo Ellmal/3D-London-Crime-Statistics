@@ -721,6 +721,7 @@ Overall:
 - rows outside London bounding box
 - missing Crime ID count
 - missing LSOA code count
+- dupliacte row_id values
 - number of files loaded
 
 By file:
