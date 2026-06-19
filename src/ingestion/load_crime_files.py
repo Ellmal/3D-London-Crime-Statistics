@@ -15,8 +15,6 @@ STREET_FILE_GLOB = "*-street.csv"
 SOURCE_FILE_COLUMN = "source_file"
 SOURCE_MONTH_FOLDER_COLUMN = "source_month_folder"
 SOURCE_ROW_NUMBER_COLUMN = "source_row_number"
-FALLS_WITHIN_COLUMN = "Falls within"
-DATA_SOURCE_NAME_COLUMN = "data_source_name"
 
 # ---------------------------------------------------------------------------
 # Month filter - adjust this to control which months are loaded.
@@ -60,22 +58,6 @@ def get_street_csv_files(month: str, raw_dir: Path = RAW_DATA_DIR) -> list[Path]
     return sorted(month_dir.glob(STREET_FILE_GLOB))
 
 
-def build_data_source_name(falls_within: pd.Series) -> pd.Series:
-    """Build uppercase acronyms from the first letter of each word in Falls within."""
-    as_text = falls_within.astype("string")
-    stripped = as_text.str.strip()
-    empty_mask = as_text.isna() | (stripped == "")
-
-    def initials(words: object) -> str | None:
-        if not isinstance(words, list) or not words:
-            return None
-        acronym = "".join(word[0].upper() for word in words if word)
-        return acronym or None
-
-    acronyms = stripped.str.split().apply(initials).astype("string")
-    return acronyms.mask(empty_mask, pd.NA)
-
-
 def load_street_csv(
     csv_path: Path,
     month: str,
@@ -91,10 +73,6 @@ def load_street_csv(
     df[SOURCE_MONTH_FOLDER_COLUMN] = month
     # Line 1 is the header row in the source file.
     df[SOURCE_ROW_NUMBER_COLUMN] = df.index + 2
-    if FALLS_WITHIN_COLUMN in df.columns:
-        df[DATA_SOURCE_NAME_COLUMN] = build_data_source_name(df[FALLS_WITHIN_COLUMN])
-    else:
-        df[DATA_SOURCE_NAME_COLUMN] = pd.NA
     return df
 
 
@@ -218,17 +196,11 @@ def main() -> None:
     for source_file, count in df[SOURCE_FILE_COLUMN].value_counts().sort_index().items():
         print(f"  {source_file}: {count:,}")
     print()
-    print("Rows by data_source_name:")
-    for name, count in df[DATA_SOURCE_NAME_COLUMN].value_counts(dropna=False).sort_index().items():
-        label = name if pd.notna(name) else "(NaN)"
-        print(f"  {label}: {count:,}")
-    print()
     print("Sample metadata columns:")
     metadata_cols = [
         SOURCE_FILE_COLUMN,
         SOURCE_MONTH_FOLDER_COLUMN,
         SOURCE_ROW_NUMBER_COLUMN,
-        DATA_SOURCE_NAME_COLUMN,
     ]
     print(df[metadata_cols].head(3).to_string(index=False))
 

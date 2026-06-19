@@ -636,20 +636,32 @@ Create:
 - month_number
 - month_label
 
-7. Preserve LSOA fields.
+7. Derive data source name.
+
+Build a short uppercase acronym from the first letter of each word in
+`falls_within`:
+
+- City of London Police → COLP
+- Metropolitan Police Service → MPS
+
+Create:
+
+- data_source_name
+
+8. Preserve LSOA fields.
 
 Keep:
 
 - lsoa_code
 - lsoa_name
 
-8. Preserve crime type.
+9. Preserve crime type.
 
 Keep:
 
 - crime_type
 
-9. Create generated row id.
+10. Create generated row id.
 
 Because crime_id can be missing, create:
 
@@ -657,9 +669,9 @@ Because crime_id can be missing, create:
 
 Suggested row_id logic:
 
-LCS / data_source_name / source_row_number / month 
+LCS / data_source_name / month / source_row_number
 
-10. Preserve source metadata.
+11. Preserve source metadata.
 
 Keep:
 
@@ -682,6 +694,7 @@ data/processed/london_crime_clean_2025-05.parquet
 - Coordinates are numeric where available.
 - Coordinate flags exist.
 - Month fields exist.
+- Data source name is derived from falls_within.
 - LSOA fields exist.
 - Crime type exists.
 - Source metadata exists.
