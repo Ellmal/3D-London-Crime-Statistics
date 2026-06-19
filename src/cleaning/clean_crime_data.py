@@ -7,14 +7,13 @@ from pathlib import Path
 import pandas as pd
 
 from src.config import (
-    DEFAULT_TESTING_MONTH,
     LONDON_BBOX,
+    PIPELINE_MONTHS,
     PROCESSED_DATA_DIR,
     RAW_COLUMN_RENAME_MAP,
     RAW_DATA_DIR,
 )
 from src.ingestion.load_crime_files import (
-    LOAD_MONTHS,
     SOURCE_FILE_COLUMN,
     SOURCE_MONTH_FOLDER_COLUMN,
     SOURCE_ROW_NUMBER_COLUMN,
@@ -174,7 +173,7 @@ def save_processed(
 
 
 def clean_months(
-    months: list[str] | None = LOAD_MONTHS,
+    months: list[str] | None = PIPELINE_MONTHS,
     raw_dir: Path = RAW_DATA_DIR,
     *,
     verbose: bool = True,
@@ -192,7 +191,7 @@ def clean_months(
 def main() -> None:
     months = resolve_load_months()
     if not months:
-        print("No months selected for cleaning. Edit LOAD_MONTHS in load_crime_files.py.")
+        print("No months selected for cleaning. Edit PIPELINE_MONTHS in src/config.py.")
         raise SystemExit(1)
 
     df = clean_months()

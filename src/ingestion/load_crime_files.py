@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.config import DEFAULT_TESTING_MONTH, RAW_DATA_DIR
+from src.config import DEFAULT_TESTING_MONTH, PIPELINE_MONTHS, RAW_DATA_DIR
 
 MONTH_LABEL_PATTERN = re.compile(r"^\d{4}-\d{2}$")
 STREET_FILE_GLOB = "*-street.csv"
@@ -16,25 +16,16 @@ SOURCE_FILE_COLUMN = "source_file"
 SOURCE_MONTH_FOLDER_COLUMN = "source_month_folder"
 SOURCE_ROW_NUMBER_COLUMN = "source_row_number"
 
-# ---------------------------------------------------------------------------
-# Month filter - adjust this to control which months are loaded.
-#
-# Examples:
-#   ["2025-05"]                      # May 2025 only (current default)
-#   ["2025-05", "2025-06"]           # specific months
-#   None                             # all month folders found under data/raw/
-# ---------------------------------------------------------------------------
-LOAD_MONTHS: list[str] | None = [DEFAULT_TESTING_MONTH]
-
 
 def resolve_load_months(
     raw_dir: Path = RAW_DATA_DIR,
-    month_filter: list[str] | None = LOAD_MONTHS,
+    month_filter: list[str] | None = PIPELINE_MONTHS,
 ) -> list[str]:
     """Return sorted month labels to load.
 
-    Uses ``LOAD_MONTHS`` by default. When ``month_filter`` is ``None``, every
-    ``YYYY-MM`` folder under ``raw_dir`` is included.
+    Uses ``PIPELINE_MONTHS`` (from ``src.config``) by default. When
+    ``month_filter`` is ``None``, every ``YYYY-MM`` folder under ``raw_dir`` is
+    included.
     """
     if month_filter is not None:
         return sorted(month_filter)
@@ -128,15 +119,15 @@ def load_month(
 
 
 def load_months(
-    months: list[str] | None = LOAD_MONTHS,
+    months: list[str] | None = PIPELINE_MONTHS,
     raw_dir: Path = RAW_DATA_DIR,
     *,
     verbose: bool = True,
 ) -> pd.DataFrame:
     """Load and combine street CSVs across one or more months.
 
-    Uses ``LOAD_MONTHS`` by default. Pass ``None`` for ``months`` to load every
-    month folder under ``raw_dir``.
+    Uses ``PIPELINE_MONTHS`` by default. Pass ``None`` for ``months`` to load
+    every month folder under ``raw_dir``.
     """
     resolved_months = resolve_load_months(raw_dir, months)
 
@@ -175,7 +166,7 @@ def load_months(
 def main() -> None:
     months = resolve_load_months()
     if not months:
-        print("No months selected for loading. Edit LOAD_MONTHS in load_crime_files.py.")
+        print("No months selected for loading. Edit PIPELINE_MONTHS in src/config.py.")
         raise SystemExit(1)
 
     df = load_months()
@@ -204,8 +195,8 @@ def main() -> None:
     ]
     print(df[metadata_cols].head(3).to_string(index=False))
 
-    if len(months) == 1 and LOAD_MONTHS is not None:
-        print("\nTo load more months, edit LOAD_MONTHS in load_crime_files.py.")
+    if len(months) == 1 and PIPELINE_MONTHS is not None:
+        print("\nTo load more months, edit PIPELINE_MONTHS in src/config.py.")
 
 
 if __name__ == "__main__":

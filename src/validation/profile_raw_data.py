@@ -10,7 +10,12 @@ import pandas as pd
 
 from typing import Literal
 
-from src.config import DEFAULT_TESTING_MONTH, OUTPUTS_REPORTS_DIR, RAW_DATA_DIR
+from src.config import (
+    OUTPUTS_REPORTS_DIR,
+    PIPELINE_MONTHS,
+    RAW_DATA_DIR,
+    REPORT_OUTPUT_MODE,
+)
 
 MONTH_LABEL_PATTERN = re.compile(r"^\d{4}-\d{2}$")
 
@@ -19,29 +24,10 @@ COMBINED_REPORT_FILENAME = "raw_data_profile_combined.txt"
 
 ReportOutputMode = Literal["separate", "combined", "both"]
 
-# ---------------------------------------------------------------------------
-# Month filter - adjust this to control which months are profiled.
-#
-# Examples:
-#   ["2025-05"]                      # May 2025 only (current default)
-#   ["2025-05", "2025-06"]           # specific months
-#   None                             # all month folders found under data/raw/
-# ---------------------------------------------------------------------------
-PROFILE_MONTHS: list[str] | None = [DEFAULT_TESTING_MONTH]
-
-# ---------------------------------------------------------------------------
-# Report output mode - controls how profile text is saved.
-#
-#   "separate"  -> one file per month (default)
-#   "combined"  -> one aggregated profile across all selected months/files
-#   "both"      -> write separate per-month and aggregated combined reports
-# ---------------------------------------------------------------------------
-REPORT_OUTPUT_MODE: ReportOutputMode = "separate"
-
 
 def resolve_profile_months(
     raw_dir: Path = RAW_DATA_DIR,
-    month_filter: list[str] | None = PROFILE_MONTHS,
+    month_filter: list[str] | None = PIPELINE_MONTHS,
 ) -> list[str]:
     if month_filter is not None:
         return sorted(month_filter)
@@ -439,7 +425,7 @@ def main() -> None:
         print(f"\nReport saved to: {written_reports[month]}")
 
     if len(months) == 1 and REPORT_OUTPUT_MODE == "separate":
-        print("\nTo profile more months, edit PROFILE_MONTHS in profile_raw_data.py.")
+        print("\nTo profile more months, edit PIPELINE_MONTHS in src/config.py.")
 
 
 if __name__ == "__main__":

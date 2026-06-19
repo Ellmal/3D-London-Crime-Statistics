@@ -15,7 +15,31 @@ OUTPUTS_CHARTS_DIR = OUTPUTS_DIR / "charts"
 OUTPUTS_MAPS_DIR = OUTPUTS_DIR / "maps"
 OUTPUTS_REPORTS_DIR = OUTPUTS_DIR / "reports"
 
-DEFAULT_TESTING_MONTH = "2025-05"
+# ---------------------------------------------------------------------------
+# Single source of truth for which months run through the pipeline.
+# Change this list in one place to control loading, profiling, cleaning, and
+# validation. Every step reads from here (orchestrated by run_pipeline.py).
+#
+# Examples:
+#   ["2025-05"]                      # one month (current default)
+#   ["2025-05", "2025-06"]           # specific months
+#   None                             # all YYYY-MM folders found under data/raw/
+# ---------------------------------------------------------------------------
+PIPELINE_MONTHS: list[str] | None = ["2025-05"]
+
+# Convenience single month, derived from PIPELINE_MONTHS. Used for single-month
+# defaults and the "testing month" highlight in the raw file inventory. Falls
+# back to "2025-05" when PIPELINE_MONTHS is None (process-all mode).
+DEFAULT_TESTING_MONTH = PIPELINE_MONTHS[0] if PIPELINE_MONTHS else "2025-05"
+
+# ---------------------------------------------------------------------------
+# Raw profile report output mode (step 2 in run_pipeline.py).
+#
+#   "separate"  -> one file per month (default)
+#   "combined"  -> one aggregated profile across all selected months/files
+#   "both"      -> write separate per-month and aggregated combined reports
+# ---------------------------------------------------------------------------
+REPORT_OUTPUT_MODE = "separate"
 
 LONDON_BBOX = {
     "longitude_min": -0.55,

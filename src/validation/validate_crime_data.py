@@ -16,13 +16,12 @@ from src.cleaning.clean_crime_data import (
     clean_months,
 )
 from src.config import (
-    DEFAULT_TESTING_MONTH,
     OUTPUTS_REPORTS_DIR,
+    PIPELINE_MONTHS,
     PROCESSED_DATA_DIR,
     RAW_DATA_DIR,
 )
 from src.ingestion.load_crime_files import (
-    LOAD_MONTHS,
     SOURCE_FILE_COLUMN,
     load_months,
     resolve_load_months,
@@ -30,16 +29,6 @@ from src.ingestion.load_crime_files import (
 from src.validation.profile_raw_data import count_missing_text
 
 REPORT_FILENAME_TEMPLATE = "data_quality_report_{month}.txt"
-
-# ---------------------------------------------------------------------------
-# Month filter - adjust this to control which months are validated.
-#
-# Examples:
-#   ["2025-05"]                      # May 2025 only (current default)
-#   ["2025-05", "2025-06"]           # specific months
-#   None                             # all month folders found under data/raw/
-# ---------------------------------------------------------------------------
-VALIDATE_MONTHS: list[str] | None = [DEFAULT_TESTING_MONTH]
 
 CRIME_ID_COLUMN = "crime_id"
 LSOA_CODE_COLUMN = "lsoa_code"
@@ -318,7 +307,7 @@ def validate_month(
 
 
 def validate_months(
-    months: list[str] | None = VALIDATE_MONTHS,
+    months: list[str] | None = PIPELINE_MONTHS,
     *,
     raw_dir: Path = RAW_DATA_DIR,
     processed_dir: Path = PROCESSED_DATA_DIR,
@@ -343,11 +332,11 @@ def validate_months(
 
 
 def main() -> None:
-    months = resolve_load_months(month_filter=VALIDATE_MONTHS)
+    months = resolve_load_months(month_filter=PIPELINE_MONTHS)
     if not months:
         print(
             "No months selected for validation. "
-            "Edit VALIDATE_MONTHS in validate_crime_data.py."
+            "Edit PIPELINE_MONTHS in src/config.py."
         )
         raise SystemExit(1)
 
@@ -359,9 +348,9 @@ def main() -> None:
         print()
         print(report)
 
-    if len(months) == 1 and VALIDATE_MONTHS is not None:
+    if len(months) == 1 and PIPELINE_MONTHS is not None:
         print(
-            "\nTo validate more months, edit VALIDATE_MONTHS in validate_crime_data.py."
+            "\nTo validate more months, edit PIPELINE_MONTHS in src/config.py."
         )
 
 
