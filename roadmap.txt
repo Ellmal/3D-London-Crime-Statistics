@@ -812,7 +812,7 @@ This is not the final dashboard.
   - crimes by crime type
   - crimes by police force
   - top LSOAs by crime count
-- data quality report preview if available
+- data quality report preview
 
 ## Interactive Point Map
 
