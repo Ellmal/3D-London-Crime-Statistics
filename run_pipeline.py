@@ -10,13 +10,14 @@ Steps (in order):
   3. Load + clean raw files       (src.cleaning.clean_crime_data)*
   4. Write processed Parquet      (src.cleaning.clean_crime_data.save_processed)
   5. Generate data quality report (src.validation.validate_crime_data)
+  6. Spatial grid aggregation    (src.transformation.aggregate_crime_grid)
 
 * Loading (src.ingestion.load_crime_files) is folded into cleaning:
   ``clean_months`` calls ``load_months`` internally, so running a separate load
   pass would re-read the same CSVs. We load+clean once, then write the result.
 
-Safe to rerun: processed Parquet files and reports are overwritten on each run;
-raw files are only read.
+Safe to rerun: processed Parquet files, viz summaries, and reports are
+overwritten on each run; raw files are only read.
 
 Usage:
     python run_pipeline.py
@@ -33,6 +34,7 @@ from src.config import (
 )
 from src.ingestion.list_raw_files import build_inventory
 from src.ingestion.load_crime_files import resolve_load_months
+from src.transformation.aggregate_crime_grid import aggregate_month, verify_summary
 from src.validation.profile_raw_data import profile_months
 from src.validation.validate_crime_data import validate_months
 
@@ -95,6 +97,21 @@ def run_validate(months: list[str]) -> None:
         print(f"  Report [{month}] saved to: {path}")
 
 
+def run_aggregate(months: list[str]) -> None:
+    print_step(6, "Spatial grid aggregation")
+    all_issues: list[str] = []
+    for month in months:
+        summary, output_path, input_rows = aggregate_month(month)
+        all_issues.extend(verify_summary(summary, input_rows))
+        print(f"  Grid summary [{month}] saved to: {output_path}")
+
+    if all_issues:
+        print("\nGrid aggregation verification failed:")
+        for issue in all_issues:
+            print(f"  - {issue}")
+        raise SystemExit(1)
+
+
 def main() -> None:
     months = resolve_load_months(RAW_DATA_DIR, PIPELINE_MONTHS)
     if not months:
@@ -108,6 +125,7 @@ def main() -> None:
     run_profile(months)
     run_clean_and_save(months)
     run_validate(months)
+    run_aggregate(months)
 
     print()
     print("=" * 70)

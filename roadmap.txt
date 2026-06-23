@@ -897,7 +897,7 @@ Optional later groupings:
 
 For each grid cell calculate:
 
-- crime_count
+- crime_count (row_id count)
 - unique_crime_type_count
 - top_crime_type
 - unique_lsoa_count
@@ -947,7 +947,6 @@ Use one of:
 1. Circle intensity map
    - one circle per grid cell
    - color = crime_count
-   - size = crime_count
 
 2. Heatmap-style layer
    - intensity based on crime count
