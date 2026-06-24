@@ -1068,9 +1068,7 @@ Add proper user-facing controls:
   - 3D hexagons
   - raw points
 - crime type selector (already introduced in Mini 7; formalised here)
-- police force selector
 - London bounding box toggle
-- metric selector if useful
 - max points slider for the raw point layer only
 
 ## Important Distinction
@@ -1100,8 +1098,7 @@ Expand beyond May 2025 only after the May pipeline and visuals work.
 1. Add June 2025.
 2. Confirm schema is consistent.
 3. Confirm pipeline still works.
-4. Add all available months from 2025-05 to 2026-04.
-5. Write combined processed output.
+4. Write combined processed output.
 
 ## Build
 
