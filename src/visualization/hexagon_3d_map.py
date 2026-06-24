@@ -1,8 +1,13 @@
-"""Build a standalone 3D hexagon extrusion map from cleaned crime points."""
+"""Build a standalone 3D hexagon extrusion map from cleaned crime points.
+
+Hex binning geometry lives in :mod:`src.transformation.hex_grid`; all tunable
+parameters (radius, elevation, colour, camera) live in :mod:`src.config`. This
+module only handles colour/elevation encoding and the pydeck rendering, so the
+precomputed aggregation and the live render share one grid definition.
+"""
 
 from __future__ import annotations
 
-import math
 from pathlib import Path
 
 import numpy as np
@@ -15,6 +20,16 @@ from src.cleaning.clean_crime_data import (
 )
 from src.config import (
     DEFAULT_TESTING_MONTH,
+    HEX_CAMERA_BEARING as CAMERA_BEARING,
+    HEX_CAMERA_PITCH as CAMERA_PITCH,
+    HEX_CAMERA_ZOOM as CAMERA_ZOOM,
+    HEX_COLOR_GAMMA as COLOR_GAMMA,
+    HEX_COLUMN_DISK_SIDES as COLUMN_DISK_SIDES,
+    HEX_COVERAGE,
+    HEX_ELEVATION_POWER as ELEVATION_POWER,
+    HEX_ELEVATION_SCALE as ELEVATION_SCALE,
+    HEX_FILL_ALPHA as FILL_ALPHA,
+    HEX_RADIUS_METERS,
     LONDON_BBOX,
     OUTPUTS_MAPS_DIR,
     PIPELINE_MONTHS,
@@ -25,11 +40,15 @@ from src.transformation.aggregate_crime_grid import (
     load_filtered_points,
     output_parquet_path,
 )
+from src.transformation.hex_grid import (
+    HEX_Q_COLUMN,
+    HEX_R_COLUMN,
+    assign_hex_columns,
+    hex_centers,
+)
 
 OUTPUT_FILENAME_TEMPLATE = "london_crime_3d_hex_{month}.html"
 
-HEX_Q_COLUMN = "hex_q"
-HEX_R_COLUMN = "hex_r"
 ELEVATION_COLUMN = "elevation"
 COLOR_R_COLUMN = "color_r"
 COLOR_G_COLUMN = "color_g"
@@ -49,27 +68,6 @@ GRADIENT_STOPS: list[tuple[float, tuple[int, int, int]]] = [
     (0.94, (252, 220, 165)),
     (1.0, (255, 248, 215)),
 ]
-
-# ~350 m hexagons suit London's extent
-HEX_RADIUS_METERS = 100
-HEX_COVERAGE = 0.88
-COLUMN_DISK_SIDES = 6
-
-# count^power * scale → meters; power 0.65 stretches outliers more than sqrt (0.5)
-ELEVATION_POWER = 0.65
-ELEVATION_SCALE = 400
-FILL_ALPHA = 230
-# Power < 1 stretches the low end across more of the gradient for visible differences
-COLOR_GAMMA = 0.62
-
-CAMERA_PITCH = 55
-CAMERA_BEARING = -20
-CAMERA_ZOOM = 9.2
-
-REF_LATITUDE = (LONDON_BBOX["latitude_min"] + LONDON_BBOX["latitude_max"]) / 2
-METERS_PER_DEGREE_LATITUDE = 110_540.0
-METERS_PER_DEGREE_LONGITUDE = 111_320.0 * math.cos(math.radians(REF_LATITUDE))
-SQRT3 = math.sqrt(3.0)
 
 
 def output_html_path(
@@ -104,72 +102,17 @@ def normalized_value_to_rgb(t: float) -> tuple[int, int, int]:
     return GRADIENT_STOPS[-1][1]
 
 
-def lon_lat_to_meters(longitude: np.ndarray, latitude: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    x = longitude * METERS_PER_DEGREE_LONGITUDE
-    y = latitude * METERS_PER_DEGREE_LATITUDE
-    return x, y
+def encode_hex_cells(hex_df: pd.DataFrame) -> pd.DataFrame:
+    """Attach smooth colour + elevation fields to aggregated hex cells.
 
+    Expects ``crime_count`` plus position columns. Colour is a sqrt-normalized,
+    gamma-stretched gradient; elevation is ``count^power``. The normalization is
+    relative to the cells in ``hex_df``, so colours reflect the current filter.
+    """
+    if hex_df.empty:
+        return hex_df
 
-def meters_to_lon_lat(x: float, y: float) -> tuple[float, float]:
-    return x / METERS_PER_DEGREE_LONGITUDE, y / METERS_PER_DEGREE_LATITUDE
-
-
-def cube_round(q: np.ndarray, r: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Round fractional axial hex coordinates to the nearest cell."""
-    s = -q - r
-    rq = np.round(q)
-    rr = np.round(r)
-    rs = np.round(s)
-
-    dq = np.abs(rq - q)
-    dr = np.abs(rr - r)
-    ds = np.abs(rs - s)
-
-    fix_q = (dq > dr) & (dq > ds)
-    fix_r = (dr > ds) & ~fix_q
-
-    rq = np.where(fix_q, -rr - rs, rq)
-    rr = np.where(fix_r, -rq - rs, rr)
-    return rq.astype(np.int64), rr.astype(np.int64)
-
-
-def hex_cell_center(q: int, r: int, radius_meters: float) -> tuple[float, float]:
-    x = radius_meters * 1.5 * q
-    y = radius_meters * SQRT3 * (r + q / 2.0)
-    return meters_to_lon_lat(x, y)
-
-
-def aggregate_points_to_hex(
-    point_df: pd.DataFrame,
-    radius_meters: float = HEX_RADIUS_METERS,
-) -> pd.DataFrame:
-    """Bin crime points into hex cells and attach smooth colour + elevation fields."""
-    longitude = point_df[LONGITUDE_COLUMN].to_numpy(dtype=float)
-    latitude = point_df[LATITUDE_COLUMN].to_numpy(dtype=float)
-
-    x, y = lon_lat_to_meters(longitude, latitude)
-    q = (2.0 / 3.0 * x) / radius_meters
-    r = (-1.0 / 3.0 * x + SQRT3 / 3.0 * y) / radius_meters
-    hex_q, hex_r = cube_round(q, r)
-
-    binned = pd.DataFrame({HEX_Q_COLUMN: hex_q, HEX_R_COLUMN: hex_r})
-    grouped = (
-        binned.groupby([HEX_Q_COLUMN, HEX_R_COLUMN], as_index=False)
-        .size()
-        .rename(columns={"size": CRIME_COUNT_COLUMN})
-    )
-
-    centers = grouped.apply(
-        lambda row: hex_cell_center(
-            int(row[HEX_Q_COLUMN]),
-            int(row[HEX_R_COLUMN]),
-            radius_meters,
-        ),
-        axis=1,
-    )
-    grouped[LONGITUDE_COLUMN] = centers.map(lambda pair: pair[0])
-    grouped[LATITUDE_COLUMN] = centers.map(lambda pair: pair[1])
-
+    grouped = hex_df.copy()
     counts = grouped[CRIME_COUNT_COLUMN].astype(float)
     sqrt_counts = np.sqrt(counts)
     min_sqrt = float(sqrt_counts.min())
@@ -189,6 +132,27 @@ def aggregate_points_to_hex(
     grouped[ELEVATION_COLUMN] = np.power(counts, ELEVATION_POWER)
     grouped[CRIME_COUNT_COLUMN] = grouped[CRIME_COUNT_COLUMN].astype(int)
     return grouped
+
+
+def aggregate_points_to_hex(
+    point_df: pd.DataFrame,
+    radius_meters: float = HEX_RADIUS_METERS,
+) -> pd.DataFrame:
+    """Bin crime points into hex cells and attach colour + elevation fields."""
+    binned = assign_hex_columns(point_df, radius_meters)
+    grouped = (
+        binned.groupby([HEX_Q_COLUMN, HEX_R_COLUMN], as_index=False)
+        .size()
+        .rename(columns={"size": CRIME_COUNT_COLUMN})
+    )
+
+    longitude, latitude = hex_centers(
+        grouped[HEX_Q_COLUMN], grouped[HEX_R_COLUMN], radius_meters
+    )
+    grouped[LONGITUDE_COLUMN] = longitude
+    grouped[LATITUDE_COLUMN] = latitude
+
+    return encode_hex_cells(grouped)
 
 
 def build_hexagon_map(hex_df: pd.DataFrame) -> pdk.Deck | None:

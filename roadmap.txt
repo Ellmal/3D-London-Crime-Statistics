@@ -1111,8 +1111,8 @@ Update loader and pipeline to support:
 
 Monthly processed outputs:
 
-data/processed/monthly/london_crime_clean_2025-05.parquet
-data/processed/monthly/london_crime_clean_2025-06.parquet
+data/processed/london_crime_clean_2025-05.parquet
+data/processed/london_crime_clean_2025-06.parquet
 
 Combined processed output:
 
@@ -1121,12 +1121,11 @@ data/processed/london_crime_clean_all.parquet
 Visual-ready monthly outputs:
 
 data/viz/crime_grid_month_type.parquet
-data/viz/crime_lsoa_month_type.parquet
 
 ## Success Criteria
 
 - Pipeline can still run for May only.
-- Pipeline can run for all months.
+- Pipeline can run for selected months or all months.
 - Monthly outputs are generated.
 - Combined output is generated.
 - Performance remains acceptable.
@@ -1158,7 +1157,7 @@ Use a Streamlit select_slider.
 
 Create a timelapse-style interaction by stepping month by month.
 
-## Absolute vs Normalized Scaling (important for a true "pulse")
+## Absolute vs Normalized Scaling (important for a true "pulse") - IGNORE THIS FOR NOW
 
 Raw crime counts differ from month to month, so taller columns can simply mean
 "busier month" rather than a real change in pattern. Provide two modes:
@@ -1176,10 +1175,6 @@ Precompute visual-ready monthly aggregations.
 Do not recompute from raw data every time the slider changes.
 
 ## Input
-
-data/viz/crime_grid_month_type.parquet
-
-or
 
 data/viz/crime_hex_3d_month.parquet
 

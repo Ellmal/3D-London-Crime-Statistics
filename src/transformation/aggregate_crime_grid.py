@@ -21,6 +21,12 @@ from src.config import (
     VIZ_DATA_DIR,
 )
 from src.ingestion.load_crime_files import resolve_load_months
+from src.transformation.hex_grid import (
+    HEX_Q_COLUMN,
+    HEX_R_COLUMN,
+    assign_hex_columns,
+    hex_centers,
+)
 
 CRIME_TYPE_COLUMN = "crime_type"
 LSOA_CODE_COLUMN = "lsoa_code"
@@ -36,8 +42,22 @@ CENTER_LONGITUDE_COLUMN = "center_longitude"
 
 GRID_DECIMAL_PLACES = 3
 OUTPUT_FILENAME_TEMPLATE = "crime_grid_summary_{month}.parquet"
+GRID_MONTH_TYPE_OUTPUT_FILENAME = "crime_grid_month_type.parquet"
+HEX_MONTH_TYPE_OUTPUT_FILENAME = "crime_hex_3d_month.parquet"
 
 GROUP_COLUMNS = [MONTH_COLUMN, LAT_GRID_COLUMN, LON_GRID_COLUMN]
+GROUP_COLUMNS_MONTH_TYPE = [
+    MONTH_COLUMN,
+    LAT_GRID_COLUMN,
+    LON_GRID_COLUMN,
+    CRIME_TYPE_COLUMN,
+]
+GROUP_COLUMNS_HEX_MONTH_TYPE = [
+    MONTH_COLUMN,
+    CRIME_TYPE_COLUMN,
+    HEX_Q_COLUMN,
+    HEX_R_COLUMN,
+]
 
 
 def processed_parquet_path(
@@ -52,6 +72,14 @@ def output_parquet_path(
     viz_dir: Path = VIZ_DATA_DIR,
 ) -> Path:
     return viz_dir / OUTPUT_FILENAME_TEMPLATE.format(month=month)
+
+
+def grid_month_type_output_path(viz_dir: Path = VIZ_DATA_DIR) -> Path:
+    return viz_dir / GRID_MONTH_TYPE_OUTPUT_FILENAME
+
+
+def hex_month_type_output_path(viz_dir: Path = VIZ_DATA_DIR) -> Path:
+    return viz_dir / HEX_MONTH_TYPE_OUTPUT_FILENAME
 
 
 def load_filtered_points(
@@ -74,6 +102,23 @@ def load_filtered_points(
     if verbose:
         print(f"  {len(df):,} total rows -> {len(filtered):,} with valid London coordinates")
     return filtered
+
+
+def load_filtered_points_months(
+    months: list[str],
+    processed_dir: Path = PROCESSED_DATA_DIR,
+    *,
+    verbose: bool = True,
+) -> pd.DataFrame:
+    """Load and concatenate filtered map-ready points for multiple months."""
+    frames: list[pd.DataFrame] = []
+    for month in months:
+        frames.append(
+            load_filtered_points(month, processed_dir, verbose=verbose)
+        )
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True)
 
 
 def add_grid_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -149,6 +194,55 @@ def aggregate_crime_grid(df: pd.DataFrame) -> pd.DataFrame:
     return summary[column_order]
 
 
+def aggregate_crime_grid_month_type(df: pd.DataFrame) -> pd.DataFrame:
+    """Summarize point-level data into one row per month/grid cell/crime type."""
+    if df.empty:
+        return pd.DataFrame(
+            columns=[*GROUP_COLUMNS_MONTH_TYPE, CRIME_COUNT_COLUMN]
+        )
+
+    df = add_grid_columns(df)
+    summary = (
+        df.groupby(GROUP_COLUMNS_MONTH_TYPE, as_index=False)
+        .agg(crime_count=(ROW_ID_COLUMN, "count"))
+        .rename(columns={"crime_count": CRIME_COUNT_COLUMN})
+    )
+    return summary[[*GROUP_COLUMNS_MONTH_TYPE, CRIME_COUNT_COLUMN]]
+
+
+def aggregate_crime_hex_month_type(df: pd.DataFrame) -> pd.DataFrame:
+    """Summarize points into one row per month / crime type / hex cell.
+
+    This is the visual-ready source for the 3D map. Hex cells use the shared
+    grid in :mod:`src.transformation.hex_grid`, and the centre lon/lat is stored
+    so the app can position columns without re-binning. The app filters by month
+    and crime type, then sums ``crime_count`` per hex cell for rendering.
+    """
+    output_columns = [
+        *GROUP_COLUMNS_HEX_MONTH_TYPE,
+        LONGITUDE_COLUMN,
+        LATITUDE_COLUMN,
+        CRIME_COUNT_COLUMN,
+    ]
+    if df.empty:
+        return pd.DataFrame(columns=output_columns)
+
+    binned = assign_hex_columns(df)
+    summary = (
+        binned.groupby(GROUP_COLUMNS_HEX_MONTH_TYPE, as_index=False)
+        .agg(crime_count=(ROW_ID_COLUMN, "count"))
+        .rename(columns={"crime_count": CRIME_COUNT_COLUMN})
+    )
+
+    longitude, latitude = hex_centers(
+        summary[HEX_Q_COLUMN], summary[HEX_R_COLUMN]
+    )
+    summary[LONGITUDE_COLUMN] = longitude
+    summary[LATITUDE_COLUMN] = latitude
+
+    return summary[output_columns]
+
+
 def save_grid_summary(
     df: pd.DataFrame,
     month: str,
@@ -177,6 +271,48 @@ def aggregate_month(
     input_rows = len(points)
     summary = aggregate_crime_grid(points)
     output_path = save_grid_summary(summary, month, viz_dir, verbose=verbose)
+    return summary, output_path, input_rows
+
+
+def aggregate_grid_month_type(
+    months: list[str],
+    processed_dir: Path = PROCESSED_DATA_DIR,
+    viz_dir: Path = VIZ_DATA_DIR,
+    *,
+    verbose: bool = True,
+) -> tuple[pd.DataFrame, Path, int]:
+    """Build combined month/grid/crime-type counts across selected months."""
+    points = load_filtered_points_months(months, processed_dir, verbose=verbose)
+    input_rows = len(points)
+    summary = aggregate_crime_grid_month_type(points)
+
+    viz_dir.mkdir(parents=True, exist_ok=True)
+    output_path = grid_month_type_output_path(viz_dir)
+    summary.to_parquet(output_path, index=False)
+    if verbose:
+        print(f"  Wrote {len(summary):,} rows -> {output_path}")
+
+    return summary, output_path, input_rows
+
+
+def aggregate_hex_month_type(
+    months: list[str],
+    processed_dir: Path = PROCESSED_DATA_DIR,
+    viz_dir: Path = VIZ_DATA_DIR,
+    *,
+    verbose: bool = True,
+) -> tuple[pd.DataFrame, Path, int]:
+    """Build the combined month/crime-type/hex visual-ready 3D map source."""
+    points = load_filtered_points_months(months, processed_dir, verbose=verbose)
+    input_rows = len(points)
+    summary = aggregate_crime_hex_month_type(points)
+
+    viz_dir.mkdir(parents=True, exist_ok=True)
+    output_path = hex_month_type_output_path(viz_dir)
+    summary.to_parquet(output_path, index=False)
+    if verbose:
+        print(f"  Wrote {len(summary):,} rows -> {output_path}")
+
     return summary, output_path, input_rows
 
 
@@ -239,6 +375,80 @@ def verify_summary(
     elif verbose:
         for issue in issues:
             print(f"  Verification issue: {issue}")
+
+    return issues
+
+
+def verify_grid_month_type_summary(
+    summary: pd.DataFrame,
+    input_row_count: int,
+    *,
+    verbose: bool = True,
+) -> list[str]:
+    """Check the combined month/grid/crime-type aggregation."""
+    issues: list[str] = []
+
+    if input_row_count == 0:
+        if not summary.empty:
+            issues.append("Expected empty summary for zero input rows.")
+        return issues
+
+    if summary.empty:
+        issues.append("Aggregated month/type dataset is empty.")
+        return issues
+
+    duplicate_cells = summary.duplicated(subset=GROUP_COLUMNS_MONTH_TYPE).sum()
+    if duplicate_cells:
+        issues.append(f"Found {duplicate_cells:,} duplicate month/grid/type cells.")
+
+    if summary[CRIME_COUNT_COLUMN].sum() != input_row_count:
+        issues.append(
+            "crime_count totals do not match input row count "
+            f"({int(summary[CRIME_COUNT_COLUMN].sum()):,} vs {input_row_count:,})."
+        )
+
+    if verbose and not issues:
+        print("  Month/type grid verification passed.")
+    elif verbose:
+        for issue in issues:
+            print(f"  Month/type grid verification issue: {issue}")
+
+    return issues
+
+
+def verify_hex_month_type_summary(
+    summary: pd.DataFrame,
+    input_row_count: int,
+    *,
+    verbose: bool = True,
+) -> list[str]:
+    """Check the combined month/crime-type/hex aggregation (3D map source)."""
+    issues: list[str] = []
+
+    if input_row_count == 0:
+        if not summary.empty:
+            issues.append("Expected empty summary for zero input rows.")
+        return issues
+
+    if summary.empty:
+        issues.append("Aggregated hex month/type dataset is empty.")
+        return issues
+
+    duplicate_cells = summary.duplicated(subset=GROUP_COLUMNS_HEX_MONTH_TYPE).sum()
+    if duplicate_cells:
+        issues.append(f"Found {duplicate_cells:,} duplicate month/type/hex cells.")
+
+    if summary[CRIME_COUNT_COLUMN].sum() != input_row_count:
+        issues.append(
+            "crime_count totals do not match input row count "
+            f"({int(summary[CRIME_COUNT_COLUMN].sum()):,} vs {input_row_count:,})."
+        )
+
+    if verbose and not issues:
+        print("  Hex month/type verification passed.")
+    elif verbose:
+        for issue in issues:
+            print(f"  Hex month/type verification issue: {issue}")
 
     return issues
 

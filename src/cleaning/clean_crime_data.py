@@ -42,6 +42,7 @@ LATITUDE_MIN, LATITUDE_MAX = -90.0, 90.0
 LONGITUDE_MIN, LONGITUDE_MAX = -180.0, 180.0
 
 PROCESSED_FILENAME_TEMPLATE = "london_crime_clean_{month}.parquet"
+PROCESSED_COMBINED_FILENAME = "london_crime_clean_all.parquet"
 
 
 def standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -158,7 +159,11 @@ def save_processed(
     *,
     verbose: bool = True,
 ) -> dict[str, Path]:
-    """Write one Parquet file per source month folder. Returns month -> path."""
+    """Write one Parquet file per source month folder.
+
+    When the dataframe spans more than one month, also writes a combined
+    ``london_crime_clean_all.parquet``. Returns month label (or ``"all"``) -> path.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     written: dict[str, Path] = {}
 
@@ -168,6 +173,22 @@ def save_processed(
         written[str(month)] = output_path
         if verbose:
             print(f"  Wrote {len(month_df):,} rows -> {output_path}")
+
+    if len(written) > 1:
+        combined_path = output_dir / PROCESSED_COMBINED_FILENAME
+        df.sort_values(
+            [SOURCE_MONTH_FOLDER_COLUMN, SOURCE_ROW_NUMBER_COLUMN],
+            kind="mergesort",
+        ).to_parquet(combined_path, index=False)
+        written["all"] = combined_path
+        if verbose:
+            print(f"  Wrote {len(df):,} rows -> {combined_path}")
+    else:
+        combined_path = output_dir / PROCESSED_COMBINED_FILENAME
+        if combined_path.is_file():
+            combined_path.unlink()
+            if verbose:
+                print(f"  Removed stale combined file -> {combined_path}")
 
     return written
 
