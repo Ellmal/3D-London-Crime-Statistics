@@ -163,16 +163,16 @@ def build_display_hex(
 
 
 st.set_page_config(
-    page_title="London Crime Pulse Explorer",
+    page_title="London Crime Explorer",
     page_icon="🗺️",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-st.title("London Crime Pulse Explorer")
+st.title("London Crime Explorer")
 st.caption(
-    "Exploratory 3D crime map for London — use the month slider and crime-type "
-    "pills above the map to update the hex columns and summary metrics."
+    "London Crime Explorer is a focused 3D map of real London street-level crime data. The final app turns raw monthly police CSV files into a single visual-ready hex aggregation, then lets users explore crime intensity by month and crime type through a Streamlit interface with a large tilted PyDeck map, summary metrics, a month slider, and crime-type controls."
+    "\n\nThe runtime is intentionally lightweight: the app reads one precomputed Parquet file and renders the selected slice as extruded hex columns where height and colour represent crime volume."
 )
 
 st.subheader("Dataset status")
