@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.config import (
-    LONDON_BBOX,
+    AREA_BBOX,
     PIPELINE_MONTHS,
     PROCESSED_DATA_DIR,
     RAW_COLUMN_RENAME_MAP,
@@ -29,7 +29,7 @@ FALLS_WITHIN_COLUMN = "falls_within"
 DATA_SOURCE_NAME_COLUMN = "data_source_name"
 HAS_COORDINATES_COLUMN = "has_coordinates"
 HAS_VALID_COORDINATES_COLUMN = "has_valid_coordinates"
-IS_WITHIN_LONDON_BBOX_COLUMN = "is_within_london_bbox"
+IS_WITHIN_AREA_BBOX_COLUMN = "is_within_area_bbox"
 MONTH_START_DATE_COLUMN = "month_start_date"
 YEAR_COLUMN = "year"
 MONTH_NUMBER_COLUMN = "month_number"
@@ -79,7 +79,7 @@ def add_numeric_coordinates(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_coordinate_flags(df: pd.DataFrame) -> pd.DataFrame:
-    """Flag coordinate presence, validity, and whether the point is in London."""
+    """Flag coordinate presence, validity, and whether the point is in AREA_BBOX."""
     longitude = df[LONGITUDE_COLUMN]
     latitude = df[LATITUDE_COLUMN]
 
@@ -91,15 +91,15 @@ def add_coordinate_flags(df: pd.DataFrame) -> pd.DataFrame:
     )
     has_valid_coordinates = has_coordinates & in_global_range
 
-    in_london = (
-        longitude.between(LONDON_BBOX["longitude_min"], LONDON_BBOX["longitude_max"])
-        & latitude.between(LONDON_BBOX["latitude_min"], LONDON_BBOX["latitude_max"])
+    in_area = (
+        longitude.between(AREA_BBOX["longitude_min"], AREA_BBOX["longitude_max"])
+        & latitude.between(AREA_BBOX["latitude_min"], AREA_BBOX["latitude_max"])
     )
-    is_within_london_bbox = has_valid_coordinates & in_london
+    is_within_area_bbox = has_valid_coordinates & in_area
 
     df[HAS_COORDINATES_COLUMN] = has_coordinates
     df[HAS_VALID_COORDINATES_COLUMN] = has_valid_coordinates
-    df[IS_WITHIN_LONDON_BBOX_COLUMN] = is_within_london_bbox
+    df[IS_WITHIN_AREA_BBOX_COLUMN] = is_within_area_bbox
     return df
 
 
@@ -229,7 +229,7 @@ def main() -> None:
     print(f"  Columns: {len(df.columns)}")
     print(f"  Rows with coordinates: {int(df[HAS_COORDINATES_COLUMN].sum()):,}")
     print(f"  Rows with valid coordinates: {int(df[HAS_VALID_COORDINATES_COLUMN].sum()):,}")
-    print(f"  Rows within London bbox: {int(df[IS_WITHIN_LONDON_BBOX_COLUMN].sum()):,}")
+    print(f"  Rows within area bbox: {int(df[IS_WITHIN_AREA_BBOX_COLUMN].sum()):,}")
     print(f"  Unique row_id values: {df[ROW_ID_COLUMN].nunique():,}")
     print()
     print("Rows by data_source_name:")

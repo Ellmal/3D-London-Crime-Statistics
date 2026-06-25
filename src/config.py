@@ -25,7 +25,9 @@ PIPELINE_MONTHS: list[str] | None = None
 # Falls back to "2025-05" when PIPELINE_MONTHS is None (process-all mode).
 DEFAULT_TESTING_MONTH = PIPELINE_MONTHS[0] if PIPELINE_MONTHS else "2025-05"
 
-LONDON_BBOX = {
+# Geographic bounds for filtering points and framing the map.
+# Defaults to Greater London; update lat/long limits if using data from another area.
+AREA_BBOX = {
     "longitude_min": -0.55,
     "longitude_max": 0.35,
     "latitude_min": 51.25,

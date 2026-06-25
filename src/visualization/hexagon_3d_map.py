@@ -23,7 +23,7 @@ from src.config import (
     HEX_ELEVATION_SCALE as ELEVATION_SCALE,
     HEX_FILL_ALPHA as FILL_ALPHA,
     HEX_RADIUS_METERS,
-    LONDON_BBOX,
+    AREA_BBOX,
 )
 from src.transformation.aggregate_hex_grid import CRIME_COUNT_COLUMN
 
@@ -109,8 +109,8 @@ def build_hexagon_map(hex_df: pd.DataFrame) -> pdk.Deck | None:
     if hex_df.empty:
         return None
 
-    center_latitude = (LONDON_BBOX["latitude_min"] + LONDON_BBOX["latitude_max"]) / 2
-    center_longitude = (LONDON_BBOX["longitude_min"] + LONDON_BBOX["longitude_max"]) / 2
+    center_latitude = (AREA_BBOX["latitude_min"] + AREA_BBOX["latitude_max"]) / 2
+    center_longitude = (AREA_BBOX["longitude_min"] + AREA_BBOX["longitude_max"]) / 2
 
     layer = pdk.Layer(
         "ColumnLayer",

@@ -13,7 +13,7 @@ import pandas as pd
 
 from src.cleaning.clean_crime_data import (
     HAS_VALID_COORDINATES_COLUMN,
-    IS_WITHIN_LONDON_BBOX_COLUMN,
+    IS_WITHIN_AREA_BBOX_COLUMN,
     LATITUDE_COLUMN,
     LONGITUDE_COLUMN,
     MONTH_COLUMN,
@@ -39,13 +39,13 @@ def hex_month_type_output_path(viz_dir: Path = VIZ_DATA_DIR) -> Path:
     return viz_dir / HEX_MONTH_TYPE_OUTPUT_FILENAME
 
 
-def filter_london_points(df: pd.DataFrame, *, verbose: bool = True) -> pd.DataFrame:
-    """Keep rows with valid coordinates inside the London bounding box."""
-    mask = df[HAS_VALID_COORDINATES_COLUMN] & df[IS_WITHIN_LONDON_BBOX_COLUMN]
+def filter_area_points(df: pd.DataFrame, *, verbose: bool = True) -> pd.DataFrame:
+    """Keep rows with valid coordinates inside AREA_BBOX."""
+    mask = df[HAS_VALID_COORDINATES_COLUMN] & df[IS_WITHIN_AREA_BBOX_COLUMN]
     filtered = df.loc[mask].copy()
     if verbose:
         print(
-            f"  {len(df):,} total rows -> {len(filtered):,} with valid London coordinates"
+            f"  {len(df):,} total rows -> {len(filtered):,} with valid area coordinates"
         )
     return filtered
 
@@ -76,11 +76,11 @@ def build_hex_month_type(
     *,
     verbose: bool = True,
 ) -> tuple[pd.DataFrame, Path, int]:
-    """Filter to London points, aggregate to hex grid, and save.
+    """Filter to AREA_BBOX points, aggregate to hex grid, and save.
 
     Returns ``(summary, output_path, input_row_count)``.
     """
-    points = filter_london_points(cleaned_df, verbose=verbose)
+    points = filter_area_points(cleaned_df, verbose=verbose)
     input_rows = len(points)
     summary = aggregate_crime_hex_month_type(points)
 

@@ -11,7 +11,7 @@ Crime records come from [data.police.uk](https://data.police.uk/) (street-level 
 ## What works today
 
 - **Ingestion** — load `*-street.csv` files from `data/raw/<YYYY-MM>/`
-- **Cleaning** — standardise columns, validate coordinates, filter to London bbox
+- **Cleaning** — standardise columns, validate coordinates, filter to `AREA_BBOX`
 - **Aggregation** — bin crimes into a hex grid (month × crime type × cell)
 - **App** — Streamlit UI with month slider, crime-type pills, summary metrics, and a 3D map
 
@@ -24,7 +24,7 @@ data/raw/              # Monthly CSV folders: data/raw/2025-05/*-street.csv (loc
 data/processed/        # Optional cleaned row-level Parquet (pipeline side output)
 data/viz/              # Map-ready aggregation (crime_hex_3d_month.parquet)
 src/
-  config.py            # Paths, pipeline months, London bbox, hex/map settings
+  config.py            # Paths, pipeline months, AREA_BBOX, hex/map settings
   ingestion/           # load_crime_files.py — read raw CSVs
   cleaning/            # clean_crime_data.py — standardise and validate rows
   transformation/      # hex_grid.py, aggregate_hex_grid.py — hex binning + Parquet output
@@ -79,6 +79,7 @@ Edit `src/config.py`:
 |---------|---------|
 | `PIPELINE_MONTHS` | Months to process. `["2025-05"]` for one month, `None` for every `YYYY-MM` folder under `data/raw/`. |
 | `DEFAULT_TESTING_MONTH` | Initial month in the app slider (defaults to `2025-05` when processing all months). |
+| `AREA_BBOX` | Longitude/latitude limits for filtering crime points and centring the map. Defaults to Greater London. **If your data is from outside London, update these values** to match your study area, then re-run the pipeline. |
 | `HEX_RADIUS_METERS` | Hex cell size — change requires re-running the pipeline. |
 | `HEX_ELEVATION_*`, `HEX_COLOR_*`, `HEX_CAMERA_*`, `HEX_MAP_HEIGHT` | Map appearance — app restart is enough (no pipeline re-run unless bin size changes). |
 

@@ -16,16 +16,16 @@ import math
 import numpy as np
 import pandas as pd
 
-from src.config import HEX_RADIUS_METERS, LONDON_BBOX
+from src.config import AREA_BBOX, HEX_RADIUS_METERS
 
 LONGITUDE_COLUMN = "longitude"
 LATITUDE_COLUMN = "latitude"
 HEX_Q_COLUMN = "hex_q"
 HEX_R_COLUMN = "hex_r"
 
-# Local equirectangular projection centred on London. Good enough for binning
+# Local equirectangular projection centred on AREA_BBOX. Good enough for binning
 # at city scale and far cheaper than a full geographic projection.
-REF_LATITUDE = (LONDON_BBOX["latitude_min"] + LONDON_BBOX["latitude_max"]) / 2
+REF_LATITUDE = (AREA_BBOX["latitude_min"] + AREA_BBOX["latitude_max"]) / 2
 METERS_PER_DEGREE_LATITUDE = 110_540.0
 METERS_PER_DEGREE_LONGITUDE = 111_320.0 * math.cos(math.radians(REF_LATITUDE))
 SQRT3 = math.sqrt(3.0)
