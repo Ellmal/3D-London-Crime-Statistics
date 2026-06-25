@@ -26,3 +26,7 @@ Thumbs.db
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local planning notes (not for repo)
+roadmap.txt
+final_roadmap.txt

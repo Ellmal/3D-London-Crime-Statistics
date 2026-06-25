@@ -15,6 +15,7 @@ from src.config import (
     HEX_CAMERA_BEARING as CAMERA_BEARING,
     HEX_CAMERA_PITCH as CAMERA_PITCH,
     HEX_CAMERA_ZOOM as CAMERA_ZOOM,
+    HEX_MAP_HEIGHT,
     HEX_COLOR_GAMMA as COLOR_GAMMA,
     HEX_COLUMN_DISK_SIDES as COLUMN_DISK_SIDES,
     HEX_COVERAGE,
@@ -34,18 +35,18 @@ COLOR_G_COLUMN = "color_g"
 COLOR_B_COLUMN = "color_b"
 COLOR_A_COLUMN = "color_a"
 
-# Smooth gradient: dark (low) -> bright (high). Values are interpolation stops.
+# Smooth gradient: near-black (low) -> vivid red (high). Values are interpolation stops.
 GRADIENT_STOPS: list[tuple[float, tuple[int, int, int]]] = [
-    (0.0, (38, 26, 52)),
-    (0.10, (55, 36, 62)),
-    (0.22, (78, 48, 68)),
-    (0.35, (105, 62, 72)),
-    (0.48, (138, 82, 78)),
-    (0.60, (172, 108, 88)),
-    (0.72, (205, 140, 105)),
-    (0.84, (235, 180, 130)),
-    (0.94, (252, 220, 165)),
-    (1.0, (255, 248, 215)),
+    (0.0, (18, 12, 14)),
+    (0.10, (32, 16, 18)),
+    (0.22, (52, 20, 24)),
+    (0.35, (78, 26, 30)),
+    (0.48, (110, 32, 34)),
+    (0.60, (148, 38, 36)),
+    (0.72, (188, 44, 38)),
+    (0.84, (225, 48, 40)),
+    (0.94, (248, 52, 42)),
+    (1.0, (255, 55, 45)),
 ]
 
 
@@ -59,7 +60,7 @@ def _lerp_rgb(
 
 
 def normalized_value_to_rgb(t: float) -> tuple[int, int, int]:
-    """Map a 0-1 value to a smoothly interpolated dark -> bright colour."""
+    """Map a 0-1 value to a smoothly interpolated dark -> red colour."""
     t = max(0.0, min(1.0, t))
     for index in range(len(GRADIENT_STOPS) - 1):
         start_t, start_rgb = GRADIENT_STOPS[index]
@@ -149,4 +150,5 @@ def build_hexagon_map(hex_df: pd.DataFrame) -> pdk.Deck | None:
         initial_view_state=view_state,
         tooltip=tooltip,
         map_style="dark",
+        height=HEX_MAP_HEIGHT,
     )

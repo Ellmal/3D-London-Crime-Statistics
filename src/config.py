@@ -55,8 +55,11 @@ HEX_FILL_ALPHA = 230
 
 # Camera framing for the tilted 3D view.
 HEX_CAMERA_PITCH = 55
-HEX_CAMERA_BEARING = -20
-HEX_CAMERA_ZOOM = 9.2
+HEX_CAMERA_BEARING = -10
+HEX_CAMERA_ZOOM = 10
+
+# Streamlit / PyDeck display height in pixels (default PyDeck height is 500).
+HEX_MAP_HEIGHT = 1000
 
 RAW_COLUMN_RENAME_MAP = {
     "Crime ID": "crime_id",
