@@ -1,7 +1,9 @@
 # Local / large data
 data/raw/
 data/processed/
-data/viz/
+# Viz output — deploy only the pre-aggregated map file (not other viz artifacts)
+data/viz/*
+!data/viz/crime_hex_3d_month.parquet
 
 # Generated outputs
 outputs/
