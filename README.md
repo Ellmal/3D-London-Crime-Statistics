@@ -2,6 +2,12 @@
 
 Interactive 3D map of real London street-level crime data. A batch pipeline turns monthly police CSV files into a compact hex aggregation; a Streamlit app lets you explore crime intensity by month and crime type on a tilted PyDeck hex column map.
 
+## Live demo
+
+**[London Crime Explorer on Streamlit Cloud](https://3d-london-crime-statistics-2fdndzdwwgvyd6vu8xrryc.streamlit.app/)**
+
+The hosted app uses the pre-aggregated `crime_hex_3d_month.parquet` dataset (all months included in the pipeline). No local setup or raw data required — open the link and explore.
+
 ## Data source
 
 Crime records come from [data.police.uk](https://data.police.uk/) (street-level crime open data).
